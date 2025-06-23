@@ -32,7 +32,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
 
   const login = useCallback(async (username: string, password: string) => {
-    const response = await api.post("/login", { username, password });
+    const response = await api.post("/auth/login", { username, password });
     const token = response.data.token;
 
     localStorage.setItem("token", token);
@@ -61,8 +61,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         logout();
         return;
       }
-
-      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       setUser({ username: decoded.sub, role: decoded.role });
     } catch {
       logout();

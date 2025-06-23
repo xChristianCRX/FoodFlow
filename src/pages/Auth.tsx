@@ -7,6 +7,9 @@ import { motion } from "framer-motion";
 import Input from "../components/Input";
 import { toast } from "react-hot-toast";
 import { AxiosError } from "axios";
+import { useNavigate } from "react-router-dom";
+import { useContextSelector } from "use-context-selector";
+import { AuthContext } from "../contexts/AuthContext";
 
 const loginSchema = z.object({
   username: z.string().min(3, "O usuário deve conter no mínimo 3 caracteres"),
@@ -26,6 +29,8 @@ type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function Auth() {
   const [isRegistering, setIsRegistering] = useState(false);
+  const navigate = useNavigate();
+  const login = useContextSelector(AuthContext, (context) => context.login);
 
   const {
     register: registerLogin,
@@ -45,10 +50,9 @@ export default function Auth() {
 
   const handleLogin = async (data: LoginForm) => {
     try {
-      const response = await api.post("/auth/login", data);
-      console.log(response)
-      //const token = response.data.token;
-      toast.success("Login bem-sucedido!");
+      await login(data.username, data.password);
+      toast.success("Seja bem-vindo!");
+      navigate("/tables");
     } catch (error: unknown) {
       const err = error as AxiosError;
 
@@ -66,7 +70,7 @@ export default function Auth() {
       console.log(response);
       toast.success("Registro bem-sucedido!");
       setIsRegistering(false);
-    } catch(error: unknown) {
+    } catch (error: unknown) {
       const err = error as AxiosError;
       if (err.response?.status === 409) {
         toast.error("Usuário ou e-mail já existente!");
