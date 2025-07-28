@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { api } from "../libs/axios";
+import { api } from "../lib/axios";
 import { createContext } from "use-context-selector";
 import { jwtDecode } from "jwt-decode";
 
@@ -11,6 +11,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -30,6 +31,7 @@ export const AuthContext = createContext({} as AuthContextType);
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const login = useCallback(async (username: string, password: string) => {
     const response = await api.post("/auth/login", { username, password });
@@ -51,7 +53,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Carregar usuário e token ao montar o provider
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const decoded = jwtDecode<JwtPayload>(token);
@@ -59,12 +64,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Opcional: verificar expiração do token
       if (decoded.exp * 1000 < Date.now()) {
         logout();
+        setIsLoading(false);
         return;
       }
       setUser({ username: decoded.sub, role: decoded.role });
     } catch {
       logout();
     }
+    setIsLoading(false);
   }, [logout]);
 
   return (
@@ -72,6 +79,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       value={{
         user,
         isAuthenticated: !!user,
+        isLoading,
         login,
         logout,
       }}

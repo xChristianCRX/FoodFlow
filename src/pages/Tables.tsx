@@ -1,20 +1,76 @@
 import { useEffect, useState } from "react";
-import { api } from "@/libs/axios";
+import { api } from "@/lib/axios";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { toast } from "react-hot-toast";
-import { PlusCircle } from "lucide-react";
+import { z } from "zod";
+import { TableCardComponent } from "./components/TableCardComponent";
+import { NewTableDialog } from "./components/NewTableDialog";
+import { TableDetailsModalComponent } from "./components/TableDetailsModalComponent";
+import { OrderFormComponent } from "./components/OrderFormComponent";
 
 interface Table {
     tableNumber: number;
     status: "AVAILABLE" | "OCCUPIED" | "RESERVED" | "CLOSED";
 }
 
+interface TableOrder {
+    id: string;
+    item: { name: string; price: number };
+    additions: { id: string; name: string; price: number }[];
+    waiter: { name: string };
+    observations: string;
+}
+
+interface OrderHistory {
+    id: string;
+    tableOrders: TableOrder[];
+    createdAt: string;
+}
+
+interface MenuItem {
+    id: string;
+    name: string;
+    price: number;
+    type: "BURGER" | "DRINK" | "PORTION";
+}
+
+interface Addition {
+    id: string;
+    name: string;
+    price: number;
+}
+
+interface Waiter {
+    id: string;
+    name: string;
+}
+
+const orderItemSchema = z.object({
+    itemId: z.string().min(1, "Selecione um item"),
+    additions: z.array(z.string()),
+    observations: z.string().optional(),
+});
+
+const orderSchema = z.object({
+    waiterId: z.string().min(1, "Selecione o garçom"),
+    items: z.array(orderItemSchema).min(1, "Adicione pelo menos um item"),
+});
+
+type OrderForm = z.infer<typeof orderSchema>;
+
 export default function Tables() {
     const [tables, setTables] = useState<Table[]>([]);
     const [newTableNumber, setNewTableNumber] = useState("");
+    const [selectedTable, setSelectedTable] = useState<Table | null>(null);
+    const [orderDetails, setOrderDetails] = useState<OrderHistory[]>([]);
+    const [loadingOrder, setLoadingOrder] = useState(false);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [showOrderModal, setShowOrderModal] = useState(false);
+    const [menu, setMenu] = useState<MenuItem[]>([]);
+    const [additions, setAdditions] = useState<Addition[]>([]);
+    const [waiters, setWaiters] = useState<Waiter[]>([]);
+    const [creatingOrderFor, setCreatingOrderFor] = useState<Table | null>(null);
+    const [savingOrder, setSavingOrder] = useState(false);
 
     const fetchTables = async () => {
         try {
@@ -44,84 +100,146 @@ export default function Tables() {
         fetchTables();
     }, []);
 
-    const statusColors = {
-        AVAILABLE: "bg-green-100 border-green-500",
-        OCCUPIED: "bg-red-100 border-red-500",
-        RESERVED: "bg-yellow-100 border-yellow-500",
-        CLOSED: "bg-zinc-200 border-zinc-400",
+    useEffect(() => {
+        if (showOrderModal) {
+            api.get("/menu").then(res => setMenu(res.data));
+            api.get("/addition").then(res => setAdditions(res.data));
+            api.get("/person").then(res => setWaiters(res.data));
+        }
+    }, [showOrderModal]);
+
+    const openOrderModal = (table: Table | null = null) => {
+        setCreatingOrderFor(table);
+        setShowOrderModal(true);
     };
 
-    const statusLabel = {
-        AVAILABLE: "Disponível",
-        OCCUPIED: "Ocupada",
-        RESERVED: "Reservada",
-        CLOSED: "Encerrada",
+    const closeOrderModal = () => {
+        setShowOrderModal(false);
+        setCreatingOrderFor(null);
+    };
+
+    const fetchOrderDetails = async (tableNumber: number) => {
+        try {
+            const res = await api.get(`/orders/active/${tableNumber}`);
+            setOrderDetails(Array.isArray(res.data) ? res.data : (res.data ? [res.data] : []));
+        } catch (e) {
+            setOrderDetails([]);
+        }
+    };
+
+    const onSubmitOrder = async (data: OrderForm) => {
+        if (!creatingOrderFor) return;
+        setSavingOrder(true);
+        try {
+            const payload = {
+                tableNumber: { tableNumber: creatingOrderFor.tableNumber },
+                tableOrders: data.items.map(item => ({
+                    item: { id: item.itemId },
+                    additions: item.additions.map(id => ({ id })),
+                    waiter: { id: data.waiterId },
+                    observations: item.observations,
+                })),
+            };
+            await api.post("/orders", payload);
+            toast.success("Pedido criado com sucesso!");
+
+            // Atualiza os detalhes do pedido se estiver adicionando a uma mesa ocupada
+            if (creatingOrderFor.status === "OCCUPIED") {
+                await fetchOrderDetails(creatingOrderFor.tableNumber);
+            }
+
+            closeOrderModal();
+            fetchTables();
+        } catch (e) {
+            toast.error("Erro ao criar pedido");
+        } finally {
+            setSavingOrder(false);
+        }
+    };
+
+    const handleTableClick = async (table: Table) => {
+        setSelectedTable(table);
+        setOrderDetails([]);
+        setModalOpen(true);
+        if (table.status === "OCCUPIED") {
+            setLoadingOrder(true);
+            try {
+                const res = await api.get(`/orders/active/${table.tableNumber}`);
+                const orders = Array.isArray(res.data) ? res.data : (res.data ? [res.data] : []);
+                setOrderDetails(orders);
+            } catch (e) {
+                setOrderDetails([]);
+            } finally {
+                setLoadingOrder(false);
+            }
+        }
     };
 
     return (
-        <div className="flex flex-col gap-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold">Mesas</h1>
-
-                <Dialog>
-                    <DialogTrigger asChild>
-                        <Button className="flex gap-2 hover:cursor-pointer">
-                            <PlusCircle size={18} />
-                            Nova Mesa
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Adicionar nova mesa</DialogTitle>
-                        </DialogHeader>
-
-                        <div className="flex flex-col gap-4">
-                            <Input
-                                placeholder="Número da mesa"
-                                type="number"
-                                value={newTableNumber}
-                                onChange={(e) => setNewTableNumber(e.target.value)}
-                            />
-                        </div>
-
-                        <DialogFooter>
-                            <Button
-                                onClick={handleCreateTable}
-                                disabled={!newTableNumber}
-                                className="hover:cursor-pointer"
-                            >
-                                Adicionar
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+        <div className="flex flex-col gap-8">
+            <div className="flex justify-between items-center mb-4">
+                <h1 className="text-4xl font-extrabold text-[#3E2C1C] tracking-tight drop-shadow-sm">Mesas do Salão</h1>
+                <NewTableDialog
+                    newTableNumber={newTableNumber}
+                    onTableNumberChange={setNewTableNumber}
+                    onCreateTable={handleCreateTable}
+                />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-8">
                 {tables.map((table) => (
-                    <Card
+                    <TableCardComponent
                         key={table.tableNumber}
-                        className={`border-2 ${statusColors[table.status]} hover:cursor-pointer`}
-                    >
-                        <CardHeader>
-                            <CardTitle className="text-lg">Mesa {table.tableNumber}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <span
-                                className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${table.status === "AVAILABLE"
-                                        ? "bg-green-500 text-white"
-                                        : table.status === "OCCUPIED"
-                                            ? "bg-red-500 text-white"
-                                            : table.status === "RESERVED"
-                                                ? "bg-yellow-500 text-white"
-                                                : "bg-zinc-500 text-white"
-                                    }`}
-                            >
-                                {statusLabel[table.status]}
-                            </span>
-                        </CardContent>
-                    </Card>
+                        table={table}
+                        onClick={handleTableClick}
+                    />
                 ))}
+            </div>
+
+            <TableDetailsModalComponent
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                selectedTable={selectedTable}
+                orderDetails={orderDetails}
+                loadingOrder={loadingOrder}
+                onAddOrder={(table) => openOrderModal(table)}
+                onFinishOrder={async () => {
+                    if (!selectedTable) return;
+
+                    try {
+                        await api.post(`/orders/finish/${selectedTable.tableNumber}`);
+                        toast.success("Pedido finalizado e mesa liberada!");
+                        setModalOpen(false);
+                        setSelectedTable(null);
+                        fetchTables();
+                    } catch (e) {
+                        toast.error("Erro ao finalizar pedido. Tente novamente.");
+                    }
+                }}
+            />
+
+            <OrderFormComponent
+                isOpen={showOrderModal}
+                onClose={closeOrderModal}
+                onSubmit={onSubmitOrder}
+                tables={tables}
+                menu={menu}
+                additions={additions}
+                waiters={waiters}
+                creatingOrderFor={creatingOrderFor}
+                setCreatingOrderFor={setCreatingOrderFor}
+                savingOrder={savingOrder}
+                mode={creatingOrderFor?.status === "OCCUPIED" ? 'additional' : 'new'}
+            />
+
+            <div className="fixed bottom-8 right-8 z-50">
+                <Button
+                    className="bg-[#D35400] text-white font-bold shadow-lg px-6 py-3 rounded-full text-lg hover:scale-105 hover:bg-[#b43e00]"
+                    onClick={() => openOrderModal()}
+                    disabled={!tables.some(t => t.status === "AVAILABLE")}
+                >
+                    + Novo Pedido
+                </Button>
             </div>
         </div>
     );

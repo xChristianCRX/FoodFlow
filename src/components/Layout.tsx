@@ -4,7 +4,7 @@ import { AuthContext } from "../contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { Home, UtensilsCrossed, LogOut } from "lucide-react";
+import { Home, UtensilsCrossed, LogOut, User, Menu } from "lucide-react";
 
 export function Layout() {
   const logout = useContextSelector(AuthContext, (ctx) => ctx.logout);
@@ -12,8 +12,8 @@ export function Layout() {
 
   const menuItems = [
     { label: "Mesas", to: "/tables", icon: <UtensilsCrossed size={18} /> },
-    { label: "Pedidos", to: "/orders", icon: <Home size={18} /> },
-    { label: "Cardápio", to: "/menu", icon: <UtensilsCrossed size={18} /> },
+    { label: "Cardápio", to: "/menu", icon: <Menu size={18} /> },
+    { label: "Usuários", to: "/users", icon: <User size={18} /> },
   ];
 
   return (

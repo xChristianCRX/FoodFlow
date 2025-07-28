@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { api } from "../libs/axios";
+import { api } from "../lib/axios";
 import { motion } from "framer-motion";
 import Input from "../components/Input";
 import { toast } from "react-hot-toast";
