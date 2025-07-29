@@ -19,7 +19,7 @@ interface MenuItem {
     name: string;
     description: string;
     price: number;
-    type: "BURGER" | "DRINK" | "APPETIZER";
+    type: "BURGUER" | "DRINK" | "APPETIZER";
 }
 
 const schema = z.object({
@@ -27,7 +27,7 @@ const schema = z.object({
     name: z.string().min(1, "Nome é obrigatório"),
     description: z.string().min(1, "Descrição é obrigatória"),
     price: z.string().min(1, "Preço é obrigatório"),
-    type: z.enum(["BURGER", "DRINK", "APPETIZER"], {
+    type: z.enum(["BURGUER", "DRINK", "APPETIZER"], {
         errorMap: () => ({ message: "Tipo inválido" }),
     }),
 });
@@ -185,7 +185,7 @@ export default function Menu() {
     };
 
     const categories = {
-        BURGER: { icon: <Sandwich className="text-orange-500" size={28} />, label: "Lanches", bg: "bg-gradient-to-br from-orange-100 to-orange-50" },
+        BURGUER: { icon: <Sandwich className="text-orange-500" size={28} />, label: "Lanches", bg: "bg-gradient-to-br from-orange-100 to-orange-50" },
         DRINK: { icon: <GlassWater className="text-blue-500" size={28} />, label: "Bebidas", bg: "bg-gradient-to-br from-blue-100 to-blue-50" },
         APPETIZER: { icon: <UtensilsCrossed className="text-green-600" size={28} />, label: "Porções", bg: "bg-gradient-to-br from-green-100 to-green-50" },
     };
@@ -211,7 +211,7 @@ export default function Menu() {
                 </div>
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogTrigger asChild>
-                        <Button className="bg-[#D35400] hover:bg-[#b43e00] shadow-lg px-6 py-3 rounded-full text-lg font-bold">
+                        <Button className="bg-[#D35400] hover:bg-[#b43e00] shadow-lg px-6 py-3 rounded-full text-lg font-bold cursor-pointer">
                             <Plus className="mr-2" size={20} />
                             Novo Item
                         </Button>
@@ -254,7 +254,7 @@ export default function Menu() {
                                         <SelectValue placeholder="Selecione o tipo" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="BURGER">Lanche</SelectItem>
+                                        <SelectItem value="BURGUER">Lanche</SelectItem>
                                         <SelectItem value="DRINK">Bebida</SelectItem>
                                         <SelectItem value="APPETIZER">Porção</SelectItem>
                                     </SelectContent>
@@ -280,7 +280,7 @@ export default function Menu() {
                 <div className="flex gap-2 flex-wrap">
                     <Button
                         variant={categoryFilter === null ? "default" : "outline"}
-                        className={categoryFilter === null ? "bg-[#D35400] text-white" : ""}
+                        className={categoryFilter === null ? "bg-[#D35400] text-white cursor-pointer" : "cursor-pointer"}
                         onClick={() => setCategoryFilter(null)}
                     >
                         Todos
@@ -289,7 +289,7 @@ export default function Menu() {
                         <Button
                             key={key}
                             variant={categoryFilter === key ? "default" : "outline"}
-                            className={categoryFilter === key ? value.bg + " text-white" : ""}
+                            className={categoryFilter === key ? value.bg + " text-white cursor-pointer" : "cursor-pointer"}
                             onClick={() => setCategoryFilter(key)}
                         >
                             <span className="flex items-center gap-2">{value.icon}{value.label}</span>
@@ -387,7 +387,7 @@ export default function Menu() {
                                     <SelectValue placeholder="Selecione o tipo" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="BURGER">Lanche</SelectItem>
+                                    <SelectItem value="BURGUER">Lanche</SelectItem>
                                     <SelectItem value="DRINK">Bebida</SelectItem>
                                     <SelectItem value="APPETIZER">Porção</SelectItem>
                                 </SelectContent>
